@@ -14,8 +14,19 @@ coverage](https://codecov.io/gh/jonthegeek/gutenbergr.data/graph/badge.svg)](htt
 [![R-CMD-check](https://github.com/jonthegeek/gutenbergr.data/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jonthegeek/gutenbergr.data/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-Frequently updated metadata about the Project Gutenberg collection
-<https://www.gutenberg.org/>.
+The [{gutenbergr}](https://docs.ropensci.org/gutenbergr/) package
+provides functions to fetch works from [Project
+Gutenberg](https://www.gutenberg.org/). It relies on metadata about the
+Project Gutenberg collection. The catalog metadata is updated *daily* by
+Project Gutenberg, but only rarely within {gutenbergr} itself. This
+package seeks to alleviate that issue, by:
+
+- Providing functions to fetch and process an up-to-date version of the
+  catalog.
+- Automatically updating the catalog metadata within this package on a
+  regular basis (at least weekly).
+- Automatically updating the (CRAN) released version of this package on
+  a regular basis (timeframe TBD).
 
 ## Installation
 
@@ -23,13 +34,14 @@ You can install the development version of gutenbergr.data from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("jonthegeek/gutenbergr.data")
+# install.packages("pak")
+pak::pak("jonthegeek/gutenbergr.data")
 ```
 
 ## Usage
 
-Add usage information and examples here.
+(This package does not yet contain any code, so it does not include
+usage information)
 
 ## Code of Conduct
 
