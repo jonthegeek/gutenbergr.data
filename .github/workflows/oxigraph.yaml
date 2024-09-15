@@ -46,17 +46,25 @@ jobs:
             -v ${{ github.workspace }}/oxigraph_db:/data \
             -p 7878:7878 oxigraph/oxigraph:latest
 
-      - name: Load RDF data into Oxigraph
+      - name: Load RDF data into Oxigraph using curl
         run: |
-          if [ "${{ env.LOAD_MODE }}" == "full" ]; then
-            find ./pg_rdf_files -name "*.rdf" | xargs -n 1000 -P 4 -I{} docker exec oxigraph_server \
-              oxigraph_server --location /data load --file {}
-          else
-            find ./pg_rdf_files -name "*.rdf" | head -10000 | xargs -n 1000 -P 4 -I{} docker exec oxigraph_server \
-              oxigraph_server --location /data load --file {}
-          fi
+          RDF_DIR=./pg_rdf_files/cache/epub
+          i=0
+          for rdf_file in $(find $RDF_DIR -name "*.rdf"); do
+              curl -X POST --data-binary @$rdf_file \
+                -H 'Content-Type: application/rdf+xml' \
+                http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
+              if [ $? -ne 0 ]; then
+                  echo -e "\n" >> error_log.txt
+                  echo -e "Error loading $rdf_file"
+              fi
+              i=$((i+1))
+              if [ $((i % 1000)) -eq 0 ]; then
+                  echo "[$(date '+%H:%M')] Processed $i files."
+              fi
+          done
 
       - name: Perform SPARQL query to count ebooks
         run: |
-          curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE { ?s a <http://www.gutenberg.org/2009/pgterms/ebook> }' \
+          curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE { GRAPH <http://gutenberg.org/graph/catalog> { ?s a <http://www.gutenberg.org/2009/pgterms/ebook> } }' \
             http://localhost:7878/query
