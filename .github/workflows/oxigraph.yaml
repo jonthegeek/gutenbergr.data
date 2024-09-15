@@ -22,17 +22,6 @@ jobs:
           restore-keys: |
             oxigraph-db-
 
-      - name: Create oxigraph_db directory if missing
-        run: mkdir -p oxigraph_db
-
-      - name: Create directories for RDF files
-        run: mkdir -p pg_rdf_files/cache/epub
-
-      - name: Download RDF catalog
-        run: |
-          curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
-          tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
-
       - name: Check if oxigraph_db exists
         id: check-db
         run: |
@@ -41,8 +30,16 @@ jobs:
             echo "LOAD_MODE=partial" >> $GITHUB_ENV
           else
             echo "Database not found, creating new"
+            mkdir -p oxigraph_db
             echo "LOAD_MODE=full" >> $GITHUB_ENV
           fi
+
+      - name: Download RDF catalog
+        if: env.LOAD_MODE == 'full'
+        run: |
+          mkdir -p pg_rdf_files/cache/epub
+          curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
+          tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
 
       - name: Run Oxigraph Docker container
         run: |
@@ -51,6 +48,7 @@ jobs:
             -p 7878:7878 oxigraph/oxigraph:latest
 
       - name: Load first 100 RDF files into Oxigraph using curl
+        if: env.LOAD_MODE == 'full'
         run: |
           RDF_DIR=./pg_rdf_files/cache/epub
           i=0
