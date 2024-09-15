@@ -1,0 +1,62 @@
+name: Load RDF Data to Oxigraph
+
+on:
+  workflow_dispatch:
+
+jobs:
+  load-oxigraph:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Oxigraph DB
+        uses: actions/cache@v4
+        with:
+          path: oxigraph_db
+          key: oxigraph-db-${{ github.sha }}
+          restore-keys: |
+            oxigraph-db-
+
+      - name: Create oxigraph_db directory if missing
+        run: mkdir -p oxigraph_db
+
+      - name: Download RDF catalog
+        run: |
+          curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
+          tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
+
+      - name: Check if oxigraph_db exists
+        id: check-db
+        run: |
+          if [ -d "oxigraph_db" ]; then
+            echo "Database exists"
+            echo "LOAD_MODE=partial" >> $GITHUB_ENV
+          else
+            echo "Database not found, creating new"
+            echo "LOAD_MODE=full" >> $GITHUB_ENV
+
+      - name: Run Oxigraph Docker container
+        run: |
+          docker run -d --name oxigraph_server \
+            -v ${{ github.workspace }}/oxigraph_db:/data \
+            -p 7878:7878 oxigraph/oxigraph:latest
+
+      - name: Load RDF data into Oxigraph
+        run: |
+          if [ "${{ env.LOAD_MODE }}" == "full" ]; then
+            find ./pg_rdf_files -name "*.rdf" | xargs -n 1000 -P 4 -I{} docker exec oxigraph_server \
+              oxigraph_server --location /data load --file {}
+          else
+            find ./pg_rdf_files -name "*.rdf" | head -10000 | xargs -n 1000 -P 4 -I{} docker exec oxigraph_server \
+              oxigraph_server --location /data load --file {}
+          fi
+
+      - name: Perform SPARQL query to count ebooks
+        run: |
+          curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE { ?s a <http://www.gutenberg.org/2009/pgterms/ebook> }' \
+            http://localhost:7878/query
