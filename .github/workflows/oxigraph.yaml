@@ -25,10 +25,8 @@ jobs:
       - name: Create oxigraph_db directory if missing
         run: mkdir -p oxigraph_db
 
-      - name: Download RDF catalog
-        run: |
-          curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
-          tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
+      - name: Create directories for RDF files
+        run: mkdir -p pg_rdf_files/cache/epub
 
       - name: Download RDF catalog
         run: |
