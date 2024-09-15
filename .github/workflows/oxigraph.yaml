@@ -46,6 +46,7 @@ jobs:
           docker run -d --name oxigraph_server \
             -v ${{ github.workspace }}/oxigraph_db:/data \
             -p 7878:7878 oxigraph/oxigraph:latest
+          sleep 10
 
       - name: Load first 100 RDF files into Oxigraph using curl
         if: env.LOAD_MODE == 'full'
