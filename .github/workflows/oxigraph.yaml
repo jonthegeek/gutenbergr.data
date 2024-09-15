@@ -30,6 +30,11 @@ jobs:
           curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
           tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
 
+      - name: Download RDF catalog
+        run: |
+          curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
+          tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
+
       - name: Check if oxigraph_db exists
         id: check-db
         run: |
