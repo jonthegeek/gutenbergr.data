@@ -42,6 +42,7 @@ jobs:
           else
             echo "Database not found, creating new"
             echo "LOAD_MODE=full" >> $GITHUB_ENV
+          fi
 
       - name: Run Oxigraph Docker container
         run: |
