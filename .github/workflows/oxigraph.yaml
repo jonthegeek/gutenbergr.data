@@ -1,4 +1,4 @@
-name: Load RDF Data to Oxigraph
+name: Load First 100 RDF Data to Oxigraph
 
 on:
   workflow_dispatch:
@@ -46,11 +46,11 @@ jobs:
             -v ${{ github.workspace }}/oxigraph_db:/data \
             -p 7878:7878 oxigraph/oxigraph:latest
 
-      - name: Load RDF data into Oxigraph using curl
+      - name: Load first 100 RDF files into Oxigraph using curl
         run: |
           RDF_DIR=./pg_rdf_files/cache/epub
           i=0
-          for rdf_file in $(find $RDF_DIR -name "*.rdf"); do
+          for rdf_file in $(find $RDF_DIR -name "*.rdf" | head -n 100); do
               curl -X POST --data-binary @$rdf_file \
                 -H 'Content-Type: application/rdf+xml' \
                 http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
