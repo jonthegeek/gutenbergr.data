@@ -46,8 +46,40 @@ jobs:
             echo "LOAD_MODE=none" >> $GITHUB_ENV
           fi
 
-      - name: Download RDF catalog
+      - name: Cache Last-Modified header
+        id: cache-modified-header
         if: env.LOAD_MODE != 'none'
+        uses: actions/cache@v4
+        with:
+          path: .last_modified
+          key: last-modified-header
+          restore-keys: last-modified-header
+
+      - name: Fetch Last-Modified header from RDF catalog
+        if: env.LOAD_MODE != 'none'
+        run: |
+          last_modified=$(curl -sI https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2 | grep -i "Last-Modified" | cut -d' ' -f2-)
+          echo "Last-Modified: $last_modified"
+
+          # Check if the last modified header exists
+          if [ -f .last_modified ]; then
+            previous_modified=$(cat .last_modified)
+          else
+            previous_modified=""
+          fi
+
+          # Save the new Last-Modified value if it has changed
+          if [ "$last_modified" != "$previous_modified" ]; then
+            echo "New version of rdf-files.tar.bz2 detected, will download."
+            echo "$last_modified" > .last_modified
+            echo "DOWNLOAD_REQUIRED=true" >> $GITHUB_ENV
+          else
+            echo "rdf-files.tar.bz2 has not changed."
+            echo "DOWNLOAD_REQUIRED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Download RDF catalog
+        if: env.DOWNLOAD_REQUIRED == 'true'
         run: |
           mkdir -p pg_rdf_files/cache/epub
           curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
@@ -99,7 +131,7 @@ jobs:
 
           # Create a temporary CSV excluding processed rows
           awk -F, 'NR==1 {print $0; next} {for (i in ARGV) if ($2 == ARGV[i]) next} 1' "${processed_ids[@]}" ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
-          
+
           # Replace the original CSV with the updated one
           mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
 
