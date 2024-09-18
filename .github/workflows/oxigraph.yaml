@@ -98,8 +98,7 @@ jobs:
           path: |
             .last_modified
             pg_rdf_files/cache/epub
-          key: rdf-catalog-${{ github.sha }}-last-modified
-
+          key: rdf-catalog-last-modified-manual1
 
       - name: Run Oxigraph Docker container
         if: env.LOAD_MODE != 'none'
