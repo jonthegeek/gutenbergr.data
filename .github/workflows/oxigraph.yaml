@@ -1,4 +1,4 @@
-name: Load First 100 RDF Data to Oxigraph
+name: Load RDF Data to Oxigraph
 
 on:
   workflow_dispatch:
