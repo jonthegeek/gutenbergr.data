@@ -1,7 +1,10 @@
-name: Load First 100 RDF Data to Oxigraph
+name: Load RDF Data to Oxigraph
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write  # For `Process RSS Updates` step
 
 jobs:
   load-oxigraph:
@@ -18,7 +21,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: oxigraph_db
-          key: oxigraph-db-${{ github.sha }}
+          key: oxigraph-db-manual-v1
           restore-keys: |
             oxigraph-db-
 
@@ -34,40 +37,86 @@ jobs:
             echo "LOAD_MODE=full" >> $GITHUB_ENV
           fi
 
+      - name: Check if RSS updates CSV has rows
+        if: env.LOAD_MODE == 'partial'
+        run: |
+          row_count=$(awk 'END{print NR}' ./data-raw/rss-updates.csv)
+          if [ "$row_count" -le 1 ]; then
+            echo "No RSS updates found, skipping partial load."
+            echo "LOAD_MODE=none" >> $GITHUB_ENV
+          fi
+
       - name: Download RDF catalog
-        if: env.LOAD_MODE == 'full'
+        if: env.LOAD_MODE != 'none'
         run: |
           mkdir -p pg_rdf_files/cache/epub
           curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
           tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
 
       - name: Run Oxigraph Docker container
+        if: env.LOAD_MODE != 'none'
         run: |
           docker run -d --name oxigraph_server \
             -v ${{ github.workspace }}/oxigraph_db:/data \
             -p 7878:7878 oxigraph/oxigraph:latest
           sleep 10
 
-      - name: Load first 100 RDF files into Oxigraph using curl
+      - name: Set up curl load command
+        run: |
+          load_rdf () {
+            curl -X POST --data-binary @$RDF_DIR/$1/pg$1.rdf \
+              -H 'Content-Type: application/rdf+xml' \
+              http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
+          }
+          export -f load_rdf
+
+      - name: Load all RDF files into DB
         if: env.LOAD_MODE == 'full'
         run: |
           RDF_DIR=./pg_rdf_files/cache/epub
           i=0
-          for rdf_file in $(find $RDF_DIR -name "*.rdf" | head -n 100); do
-              curl -X POST --data-binary @$rdf_file \
-                -H 'Content-Type: application/rdf+xml' \
-                http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
-              if [ $? -ne 0 ]; then
-                  echo -e "\n" >> error_log.txt
-                  echo -e "Error loading $rdf_file"
-              fi
-              i=$((i+1))
-              if [ $((i % 1000)) -eq 0 ]; then
-                  echo "[$(date '+%H:%M')] Processed $i files."
-              fi
+          for id in $(ls $RDF_DIR); do
+            load_rdf $id
+            i=$((i+1))
+            if [ $((i % 1000)) -eq 0 ]; then
+              echo "[$(date '+%H:%M')] Processed $i files."
+            fi
           done
 
+      - name: Load CSV-specified RDF files into DB
+        if: env.LOAD_MODE == 'partial'
+        run: |
+          # Pull the latest version of rss-updates.csv
+          git pull origin main ./data-raw/rss-updates.csv
+
+          RDF_DIR=./pg_rdf_files/cache/epub
+          processed_ids=()
+
+          # Loop through the ids in the CSV
+          ids=$(awk -F, 'NR>1 {print $2}' ./data-raw/rss-updates.csv)
+          for id in $ids; do
+            load_rdf $id
+            processed_ids+=($id)
+          done
+
+          # Re-pull the latest version of rss-updates.csv
+          git pull origin main ./data-raw/rss-updates.csv
+
+          # Create a temporary CSV excluding processed rows
+          awk -F, 'NR==1 || !($2 in processed_ids)' processed_ids=$(IFS=,; echo "${processed_ids[*]}") ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
+
+          # Replace the original CSV with the updated one
+          mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
+
+          # Commit and push the updated CSV
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add ./data-raw/rss-updates.csv
+          git commit -m "Processed RSS updates and removed processed rows"
+          git push origin main
+
       - name: Perform SPARQL query to count ebooks
+        if: env.LOAD_MODE != 'none'
         run: |
           curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE { GRAPH <http://gutenberg.org/graph/catalog> { ?s a <http://www.gutenberg.org/2009/pgterms/ebook> } }' \
             http://localhost:7878/query
