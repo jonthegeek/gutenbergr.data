@@ -87,7 +87,7 @@ jobs:
         if: env.LOAD_MODE == 'partial'
         run: |
           # Pull the latest version of rss-updates.csv
-          git pull origin main ./data-raw/rss-updates.csv
+          git pull origin main
 
           RDF_DIR=./pg_rdf_files/cache/epub
           processed_ids=()
@@ -100,7 +100,7 @@ jobs:
           done
 
           # Re-pull the latest version of rss-updates.csv
-          git pull origin main ./data-raw/rss-updates.csv
+          git pull origin main
 
           # Create a temporary CSV excluding processed rows
           awk -F, 'NR==1 || !($2 in processed_ids)' processed_ids=$(IFS=,; echo "${processed_ids[*]}") ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
