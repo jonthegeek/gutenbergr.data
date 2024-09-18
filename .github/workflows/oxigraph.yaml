@@ -130,7 +130,17 @@ jobs:
           git pull origin main
 
           # Create a temporary CSV excluding processed rows
-          awk -F, 'NR==1 {print $0; next} {for (i in ARGV) if ($2 == ARGV[i]) next} 1' "${processed_ids[@]}" ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
+          awk -F, -v ids="${processed_ids[*]}" '
+          BEGIN {
+            split(ids, arr, " ")
+          }
+          NR==1 {print $0; next}
+          {
+            for (i in arr) {
+              if ($2 == arr[i]) next
+            }
+            print $0
+          }' ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
 
           # Replace the original CSV with the updated one
           mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
