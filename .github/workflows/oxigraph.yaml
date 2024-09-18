@@ -4,11 +4,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # For `Process RSS Updates` step
+  contents: write  # For `Commit and push updated CSV` step
 
 jobs:
   load-oxigraph:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GH_PAT }}
 
     steps:
       - name: Checkout repository
