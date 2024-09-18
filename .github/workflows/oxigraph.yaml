@@ -103,13 +103,19 @@ jobs:
           # Replace the original CSV with the updated one
           mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
 
-          # Commit and push the updated CSV
+          # Set flag to indicate update if changes were made
+          if [[ $(git status --porcelain ./data-raw/rss-updates.csv) ]]; then
+            echo "CSV_UPDATED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Commit and push updated CSV
+        if: env.CSV_UPDATED == 'true'
+        run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add ./data-raw/rss-updates.csv
           git commit -m "Processed RSS updates and removed processed rows"
           git push origin main
-
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none'
