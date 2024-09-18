@@ -61,18 +61,14 @@ jobs:
             -p 7878:7878 oxigraph/oxigraph:latest
           sleep 10
 
-      - name: Set up curl load command
+      - name: Load all RDF files into DB
+        if: env.LOAD_MODE == 'full'
         run: |
           load_rdf () {
             curl -X POST --data-binary @$RDF_DIR/$1/pg$1.rdf \
               -H 'Content-Type: application/rdf+xml' \
               http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
           }
-          export -f load_rdf
-
-      - name: Load all RDF files into DB
-        if: env.LOAD_MODE == 'full'
-        run: |
           RDF_DIR=./pg_rdf_files/cache/epub
           i=0
           for id in $(ls $RDF_DIR); do
@@ -89,6 +85,11 @@ jobs:
           # Pull the latest version of rss-updates.csv
           git pull origin main
 
+          load_rdf () {
+            curl -X POST --data-binary @$RDF_DIR/$1/pg$1.rdf \
+              -H 'Content-Type: application/rdf+xml' \
+              http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
+          }
           RDF_DIR=./pg_rdf_files/cache/epub
           processed_ids=()
 
