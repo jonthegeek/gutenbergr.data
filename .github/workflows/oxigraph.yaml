@@ -64,11 +64,8 @@ jobs:
       - name: Load all RDF files into DB
         if: env.LOAD_MODE == 'full'
         run: |
-          load_rdf () {
-            curl -X POST --data-binary @$RDF_DIR/$1/pg$1.rdf \
-              -H 'Content-Type: application/rdf+xml' \
-              http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
-          }
+          source .github/scripts/load_rdf.sh
+
           RDF_DIR=./pg_rdf_files/cache/epub
           i=0
           for id in $(ls $RDF_DIR); do
@@ -85,11 +82,8 @@ jobs:
           # Pull the latest version of rss-updates.csv
           git pull origin main
 
-          load_rdf () {
-            curl -X POST --data-binary @$RDF_DIR/$1/pg$1.rdf \
-              -H 'Content-Type: application/rdf+xml' \
-              http://localhost:7878/store?graph=http://gutenberg.org/graph/catalog 2>>error_log.txt
-          }
+          source .github/scripts/load_rdf.sh
+
           RDF_DIR=./pg_rdf_files/cache/epub
           processed_ids=()
 
@@ -104,7 +98,7 @@ jobs:
           git pull origin main
 
           # Create a temporary CSV excluding processed rows
-          awk -F, 'NR==1 || !($2 in processed_ids)' processed_ids=$(IFS=,; echo "${processed_ids[*]}") ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
+          awk -F, -v processed="$(IFS=,; echo "${processed_ids[*]}")" 'BEGIN {split(processed, p, ",")} NR==1 || !(p[$2])' ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
 
           # Replace the original CSV with the updated one
           mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
@@ -115,6 +109,7 @@ jobs:
           git add ./data-raw/rss-updates.csv
           git commit -m "Processed RSS updates and removed processed rows"
           git push origin main
+
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none'
