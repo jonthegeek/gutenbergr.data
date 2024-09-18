@@ -49,14 +49,17 @@ jobs:
         if: env.LOAD_MODE != 'none'
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Last-Modified header
-        id: cache-modified-header
+      - name: Cache RDF catalog and Last-Modified header
+        id: cache-rdf-and-modified
         if: env.LOAD_MODE != 'none'
         uses: actions/cache@v4
         with:
-          path: .last_modified
-          key: last-modified-header
-          restore-keys: last-modified-header
+          path: |
+            .last_modified
+            pg_rdf_files/cache/epub
+          key: rdf-catalog-last-modified-manual1
+          restore-keys: |
+            rdf-catalog-last-modified
 
       - name: Fetch Last-Modified header from RDF catalog
         if: env.LOAD_MODE != 'none'
@@ -71,13 +74,13 @@ jobs:
             previous_modified=""
           fi
 
-          # Save the new Last-Modified value if it has changed
-          if [ "$last_modified" != "$previous_modified" ]; then
-            echo "New version of rdf-files.tar.bz2 detected, will download."
+          # Save the new Last-Modified value if it has changed, or download if files don't exist
+          if [ "$last_modified" != "$previous_modified" ] || [ ! -d "pg_rdf_files/cache/epub" ]; then
+            echo "New version of rdf-files.tar.bz2 detected, or RDF files missing, will download."
             echo "$last_modified" > .last_modified
             echo "DOWNLOAD_REQUIRED=true" >> $GITHUB_ENV
           else
-            echo "rdf-files.tar.bz2 has not changed."
+            echo "rdf-files.tar.bz2 has not changed and is already cached."
             echo "DOWNLOAD_REQUIRED=false" >> $GITHUB_ENV
           fi
 
@@ -87,6 +90,16 @@ jobs:
           mkdir -p pg_rdf_files/cache/epub
           curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
           tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
+
+      - name: Update cache with new RDF catalog and Last-Modified header
+        if: env.DOWNLOAD_REQUIRED == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            .last_modified
+            pg_rdf_files/cache/epub
+          key: rdf-catalog-${{ github.sha }}-last-modified
+
 
       - name: Run Oxigraph Docker container
         if: env.LOAD_MODE != 'none'
