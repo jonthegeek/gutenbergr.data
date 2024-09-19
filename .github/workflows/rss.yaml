@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  update-datasets:
+  update-rss:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GH_PAT }}
@@ -20,15 +20,13 @@ jobs:
         with:
           ref: main
           token: ${{ env.GITHUB_PAT }}
-
-      - name: Install required tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xmlstarlet libxml2-utils  # Install xmllint
-
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
       - name: Process RSS
-        run: bash .github/scripts/process_rss.sh
-
+        run: Rscript process_rss.R
       - name: 🚀 Commit if rss-updates.csv has changed
         run: |
           git config user.name "github-actions"
@@ -37,6 +35,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes in rss-updates.csv; skipping commit."
           else
-            git commit -m "🤖 Auto-update Project Gutenberg RSS CSV"
+            git commit -m "🤖 Auto-update Gutenberg CSV"
             git push
           fi

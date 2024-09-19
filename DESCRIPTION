@@ -11,7 +11,12 @@ URL: https://github.com/jonthegeek/gutenbergr.data,
     https://jonthegeek.github.io/gutenbergr.data/
 BugReports: https://github.com/jonthegeek/gutenbergr.data/issues
 Suggests: 
-    testthat (>= 3.0.0)
+    dplyr,
+    readr,
+    stringr,
+    testthat (>= 3.0.0),
+    tibble,
+    xml2
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
