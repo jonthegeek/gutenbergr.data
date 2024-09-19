@@ -130,8 +130,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add ./data-raw/rss-updates.csv
-          git commit -m "Processed RSS updates and removed processed rows"
-          git push origin main
+          git commit -m "🤖 Processed RSS updates and removed processed rows"
+          git push
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none'
