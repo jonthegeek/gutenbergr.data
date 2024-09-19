@@ -1,6 +1,9 @@
 name: Load RDF Data to Oxigraph
 
 on:
+  # Daily at 1am UTC
+  schedule:
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 permissions:
