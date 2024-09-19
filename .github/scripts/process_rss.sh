@@ -19,16 +19,16 @@ if [ $(echo "$ids" | wc -l) -ne $(echo "$languages" | wc -l) ]; then
 fi
 
 # Create a temporary CSV with the new updates
-paste <(echo "$pub_date") <(echo "$ids") <(echo "$languages") > updates_temp.csv
+paste <(yes "$pub_date" | head -n $(echo "$ids" | wc -l)) <(echo "$ids") <(echo "$languages") > updates_temp.csv
 
-# Merge the new updates with the existing CSV file and sort, ensuring the header stays at the top
+# Merge the new updates with the existing CSV file, keeping the header intact
 {
     echo "date,id,language"
-    tail -n +2 ./data-raw/rss-updates.csv  # Exclude the existing header
+    tail -n +2 ./data-raw/rss-updates.csv  # Exclude the header from the existing file
     cat updates_temp.csv
-} | sort -u -k2,2 -t ',' | awk '!seen[$2]++' > ./data-raw/rss-updates_temp.csv
+} | sort -u -k2,2 > ./data-raw/rss-updates_temp.csv
 
-# Move the sorted file to the correct location
+# Replace the original CSV with the updated one
 mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
 
 # Clean up
