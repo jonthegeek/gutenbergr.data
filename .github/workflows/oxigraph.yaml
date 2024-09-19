@@ -62,7 +62,10 @@ jobs:
           docker run -d --name oxigraph_server \
             -v ${{ github.workspace }}/oxigraph_db:/data \
             -p 7878:7878 oxigraph/oxigraph:latest
-          sleep 10
+          until curl -s http://localhost:7878; do
+            echo "Waiting for Oxigraph server to start..."
+            sleep 5
+          done
 
       - name: Load all RDF files into DB
         if: env.LOAD_MODE == 'full'
