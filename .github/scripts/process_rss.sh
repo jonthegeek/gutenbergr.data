@@ -18,6 +18,9 @@ if [ $(echo "$ids" | wc -l) -ne $(echo "$languages" | wc -l) ]; then
     exit 1
 fi
 
+# Create a temporary CSV with the new updates
+paste <(echo "$pub_date") <(echo "$ids") <(echo "$languages") > updates_temp.csv
+
 # Merge the new updates with the existing CSV file and sort, ensuring the header stays at the top
 {
     echo "date,id,language"
