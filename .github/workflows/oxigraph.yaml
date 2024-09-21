@@ -153,3 +153,15 @@ jobs:
       - name: Extract authors
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         run: source ./.github/scripts/extract_gutenberg_authors.sh
+
+      - name: Commit and push updated gutenberg_authors.csv
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add ./data-raw/gutenberg_authors.csv
+          if git diff --cached --quiet; then
+            echo "No changes in gutenberg_authors.csv; skipping commit."
+          else
+            git commit -m "🤖 Updated authors"
+            git push
+          fi
