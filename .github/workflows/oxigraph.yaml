@@ -47,8 +47,8 @@ jobs:
         run: |
           row_count=$(awk 'END{print NR}' ./data-raw/rss-updates.csv)
           if [ "$row_count" -le 1 ]; then
-            echo "No RSS updates found. Exiting."
-            exit 0
+            echo "No RSS updates found, skipping partial load."
+            echo "LOAD_MODE=none" >> $GITHUB_ENV
           fi
 
       - name: Set up Docker
