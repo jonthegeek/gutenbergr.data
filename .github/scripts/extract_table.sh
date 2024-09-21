@@ -9,7 +9,7 @@ extract_table() {
   # Set file paths based on table name
   local temp_dir=${RUNNER_TEMP:-/tmp}
   local json_file="${temp_dir}/${table_name}.json"
-  local csv_file="./data-raw/${table_name}.csv"
+  local csv_file="./${table_name}.csv"
 
   # Extract the line starting with SELECT
   local select_line=$(echo "$query" | grep '^SELECT')
