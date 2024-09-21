@@ -47,28 +47,16 @@ jobs:
             echo "LOAD_MODE=full" >> $GITHUB_ENV
           fi
 
-      - name: Check if RSS updates CSV has rows
-        if: env.LOAD_MODE == 'partial'
-        run: |
-          row_count=$(awk 'END{print NR}' ./data-raw/rss-updates.csv)
-          if [ "$row_count" -le 1 ]; then
-            echo "No RSS updates found, skipping partial load."
-            echo "LOAD_MODE=none" >> $GITHUB_ENV
-          fi
-
       - name: Set up Docker
-        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Download RDF catalog
-        if: env.LOAD_MODE != 'none'
         run: |
           mkdir -p pg_rdf_files/cache/epub
           curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
           tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
 
       - name: Run Oxigraph Docker container
-        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         run: |
           docker run -d --name oxigraph_server \
             -v ${{ github.workspace }}/oxigraph_db:/data \
@@ -93,56 +81,23 @@ jobs:
             fi
           done
 
-      - name: Load CSV-specified RDF files into DB
+      - name: Load RSS-specified RDF files into DB
         if: env.LOAD_MODE == 'partial'
         run: |
-          # Pull the latest version of rss-updates.csv
-          git pull origin main
-
           source .github/scripts/load_rdf.sh
 
           RDF_DIR=./pg_rdf_files/cache/epub
-          processed_ids=()
+          rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
+          ids=$(curl -s $rss_url | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
 
-          # Loop through the ids in the CSV
-          ids=$(awk -F, 'NR>1 {print $2}' ./data-raw/rss-updates.csv)
-          for id in $ids; do
-            load_rdf $id
-            processed_ids+=($id)
-          done
-
-          # Re-pull the latest version of rss-updates.csv
-          git pull origin main
-
-          # Create a temporary CSV excluding processed rows
-          awk -F, -v ids="${processed_ids[*]}" '
-          BEGIN {
-            split(ids, arr, " ")
-          }
-          NR==1 {print $0; next}
-          {
-            for (i in arr) {
-              if ($2 == arr[i]) next
-            }
-            print $0
-          }' ./data-raw/rss-updates.csv > ./data-raw/rss-updates_temp.csv
-
-          # Replace the original CSV with the updated one
-          mv ./data-raw/rss-updates_temp.csv ./data-raw/rss-updates.csv
-
-          # Set flag to indicate update if changes were made
-          if [[ $(git status --porcelain ./data-raw/rss-updates.csv) ]]; then
-            echo "CSV_UPDATED=true" >> $GITHUB_ENV
+          if [ -z "$ids" ]; then
+            echo "No RSS updates found, skipping load."
+            echo "LOAD_MODE=none" >> $GITHUB_ENV
+          else
+            for id in $ids; do
+              load_rdf $id
+            done
           fi
-
-      - name: Commit and push updated CSV
-        if: env.CSV_UPDATED == 'true'
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add ./data-raw/rss-updates.csv
-          git commit -m "🤖 Processed RSS updates and removed processed rows"
-          git push
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
@@ -154,14 +109,11 @@ jobs:
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         run: source ./.github/scripts/extract_gutenberg_authors.sh
 
-      - name: Commit and push updated gutenberg_authors.csv
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add ./data-raw/gutenberg_authors.csv
-          if git diff --cached --quiet; then
-            echo "No changes in gutenberg_authors.csv; skipping commit."
-          else
-            git commit -m "🤖 Updated authors"
-            git push
-          fi
+      - name: Cache authors CSV
+        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
+        uses: actions/cache@v4
+        with:
+          path: gutenberg_authors.csv
+          key: gutenberg-authors-manual-v1
+          restore-keys: |
+            gutenberg-authors-
