@@ -144,3 +144,7 @@ jobs:
         run: |
           curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE { GRAPH <http://gutenberg.org/graph/catalog> { ?s a <http://www.gutenberg.org/2009/pgterms/ebook> } }' \
             http://localhost:7878/query
+
+      - name: Extract authors
+        if: env.LOAD_MODE != 'none'
+        run: ./.github/scripts/extract_gutenberg_authors.sh
