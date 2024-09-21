@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       run_extractions:
-        description: 'Run extractions (true or false)'
-        required: false
-        default: 'false'
+        type: boolean
+        description: 'Run extractions'
+        default: false
 
 permissions:
   contents: write  # For `Commit and push updated CSV` step
