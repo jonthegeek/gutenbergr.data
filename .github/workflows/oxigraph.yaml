@@ -48,6 +48,7 @@ jobs:
           fi
 
       - name: Check RSS
+        if: env.LOAD_MODE == 'partial'
         run: |
           rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
           ids=$(curl -s $rss_url | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
