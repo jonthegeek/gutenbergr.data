@@ -152,4 +152,4 @@ jobs:
 
       - name: Extract authors
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
-        run: ./.github/scripts/extract_gutenberg_authors.sh
+        run: source ./.github/scripts/extract_gutenberg_authors.sh
