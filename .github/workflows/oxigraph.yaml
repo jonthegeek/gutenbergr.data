@@ -47,16 +47,28 @@ jobs:
             echo "LOAD_MODE=full" >> $GITHUB_ENV
           fi
 
+      - name: Check RSS
+        run: |
+          rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
+          ids=$(curl -s $rss_url | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
+          if [ -z "$ids" ]; then
+            echo "No RSS updates found, skipping load."
+            echo "LOAD_MODE=none" >> $GITHUB_ENV
+          fi
+
       - name: Set up Docker
+        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Download RDF catalog
+        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         run: |
           mkdir -p pg_rdf_files/cache/epub
           curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
           tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
 
       - name: Run Oxigraph Docker container
+        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         run: |
           docker run -d --name oxigraph_server \
             -v ${{ github.workspace }}/oxigraph_db:/data \
@@ -70,7 +82,6 @@ jobs:
         if: env.LOAD_MODE == 'full'
         run: |
           source .github/scripts/load_rdf.sh
-
           RDF_DIR=./pg_rdf_files/cache/epub
           i=0
           for id in $(ls $RDF_DIR); do
@@ -85,19 +96,12 @@ jobs:
         if: env.LOAD_MODE == 'partial'
         run: |
           source .github/scripts/load_rdf.sh
-
-          RDF_DIR=./pg_rdf_files/cache/epub
           rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
           ids=$(curl -s $rss_url | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
-
-          if [ -z "$ids" ]; then
-            echo "No RSS updates found, skipping load."
-            echo "LOAD_MODE=none" >> $GITHUB_ENV
-          else
-            for id in $ids; do
-              load_rdf $id
-            done
-          fi
+          RDF_DIR=./pg_rdf_files/cache/epub
+          for id in $ids; do
+            load_rdf $id
+          done
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
