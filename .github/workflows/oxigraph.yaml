@@ -83,13 +83,6 @@ jobs:
           ./.github/scripts/load_rdf_files.sh ${{ env.LOAD_MODE }} \
             pg_rdf_files/cache/epub
 
-      - name: Save updated Oxigraph DB
-        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
-        uses: actions/cache/save@main
-        with:
-          path: oxigraph_db
-          key: oxigraph-db-manual-v1
-
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
         run: |
@@ -112,3 +105,14 @@ jobs:
           key: gutenberg-authors-manual-v1
           restore-keys: |
             gutenberg-authors-
+
+      - name: Stop Oxigraph Docker container
+        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        run: docker stop oxigraph_server
+
+      - name: Save updated Oxigraph DB
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        uses: actions/cache/save@main
+        with:
+          path: oxigraph_db
+          key: oxigraph-db-manual-v1
