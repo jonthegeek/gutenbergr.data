@@ -41,16 +41,15 @@ jobs:
           chmod +x .github/scripts/setup_oxigraph.sh
 
       - name: Check if oxigraph_db exists
-        id: restore_oxigraph_db
-        if: inputs.force_full_load != 'true'
+        id: check_oxigraph_db
         uses: actions/cache/restore@v4
         with:
           path: oxigraph_db
-          key: oxigraph-db-manual-v1
+          restore-keys: oxigraph-db-
           lookup-only: true
 
       - name: Set LOAD_MODE based on cache existence
-        run: ./.github/scripts/set_load_mode.sh ${{ steps.restore_oxigraph_db.outputs.cache-hit }}
+        run: ./.github/scripts/set_load_mode.sh ${{ steps.check_oxigraph_db.outputs.cache-hit }}
 
       - name: Check RSS
         if: env.LOAD_MODE == 'partial'
@@ -61,9 +60,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: oxigraph_db
-          key: oxigraph-db-manual-v1
-          restore-keys: |
-            oxigraph-db-
+          key: ${{ steps.check_oxigraph_db.outputs.cache-matched-key }}
 
       - name: Download RDF catalog
         if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
@@ -110,9 +107,16 @@ jobs:
         if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
         run: docker stop oxigraph_server
 
-      - name: Save updated Oxigraph DB
+      - name: Generate hash of oxigraph_db
+        id: generate_db_hash
         if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        run: |
+          hash=$(tar -cf - oxigraph_db | sha256sum | awk '{ print $1 }')
+          echo "oxigraph_db_hash=${hash}" >> $GITHUB_ENV
+
+      - name: Save updated Oxigraph DB
+        if: env.oxigraph_db_hash && env.oxigraph_db_hash != steps.check_oxigraph_db.outputs.cache-matched-key
         uses: actions/cache/save@main
         with:
           path: oxigraph_db
-          key: oxigraph-db-manual-v1
+          key: oxigraph-db-manual-${{ env.oxigraph_db_hash }}
