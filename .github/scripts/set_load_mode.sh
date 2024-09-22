@@ -1,20 +1,20 @@
 #!/bin/bash
 # Description:
 #   Set the LOAD_MODE environment variable based on whether the Oxigraph DB
-#   cache exists or not.
+#   cache matched key exists or not.
 #
 # Usage:
-#   ./.github/scripts/set_load_mode.sh <cache_hit>
+#   ./.github/scripts/set_load_mode.sh <cache_matched_key>
 #
 # Arguments:
-#   cache_hit   Boolean indicating if the cache was found.
+#   cache_matched_key   The key matched by the cache restore action.
 #
 # Environment Variables:
 #   LOAD_MODE   Set to 'partial' if the database exists, or 'full' if it does not.
 
-cache_hit=$1
+cache_matched_key=$1
 
-if [[ "$cache_hit" == 'true' ]]; then
+if [[ -n "$cache_matched_key" ]]; then
   echo "🗄️️ Database found."
   echo "LOAD_MODE=partial" >> $GITHUB_ENV
 else
