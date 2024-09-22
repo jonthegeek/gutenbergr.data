@@ -45,6 +45,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: oxigraph_db
+          key: oxigraph-db-${{ github.run_id }} # This will never already exist.
           restore-keys: oxigraph-db-
           lookup-only: true
 
@@ -107,16 +108,9 @@ jobs:
         if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
         run: docker stop oxigraph_server
 
-      - name: Generate hash of oxigraph_db
-        id: generate_db_hash
-        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
-        run: |
-          hash=$(tar -cf - oxigraph_db | sha256sum | awk '{ print $1 }')
-          echo "oxigraph_db_hash=${hash}" >> $GITHUB_ENV
-
       - name: Save updated Oxigraph DB
-        if: env.oxigraph_db_hash && env.oxigraph_db_hash != steps.check_oxigraph_db.outputs.cache-matched-key
+        if: steps.check_oxigraph_db.outputs.cache-matched-key && oxigraph-db-${{ hashFiles('oxigraph_db') }} != steps.check_oxigraph_db.outputs.cache-matched-key
         uses: actions/cache/save@main
         with:
           path: oxigraph_db
-          key: oxigraph-db-manual-${{ env.oxigraph_db_hash }}
+          key: oxigraph-db-${{ hashFiles('oxigraph_db') }}
