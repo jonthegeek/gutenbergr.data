@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GH_PAT }}
-      LOAD_MODE: ${{ inputs.force_full_load && 'full' || '' }}
+      LOAD_MODE: ${{ inputs.force_full_load && 'full' || 'none' }}
 
     steps:
       - name: Checkout repository
@@ -41,6 +41,7 @@ jobs:
           chmod +x .github/scripts/setup_oxigraph.sh
 
       - name: Check if oxigraph_db exists
+        if: env.LOAD_MODE != 'full'
         id: check_oxigraph_db
         uses: actions/cache/restore@v4
         with:
@@ -50,29 +51,34 @@ jobs:
           lookup-only: true
 
       - name: Set LOAD_MODE based on cache existence
+        if: env.LOAD_MODE != 'full'
         run: ./.github/scripts/set_load_mode.sh ${{ steps.check_oxigraph_db.outputs.cache-matched-key }}
 
       - name: Check RSS
         if: env.LOAD_MODE == 'partial'
         run: ./.github/scripts/check_rss.sh
 
+      - name: Check force extractions
+        if: env.LOAD_MODE == 'none' && github.event.inputs.force_extractions == 'true'
+        run: echo "LOAD_MODE=extract" >> $GITHUB_ENV
+
       - name: Restore Oxigraph DB cache
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE == 'partial' || env.LOAD_MODE == 'extract'
         uses: actions/cache/restore@v4
         with:
           path: oxigraph_db
           key: ${{ steps.check_oxigraph_db.outputs.cache-matched-key }}
 
       - name: Download RDF catalog
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
         run: ./.github/scripts/download_rdf_catalog.sh pg_rdf_files
 
       - name: Set up Docker
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE != 'none'
         uses: docker/setup-buildx-action@v3
 
       - name: Run Oxigraph Docker container
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE != 'none'
         run: ./.github/scripts/setup_oxigraph.sh
 
       - name: Load RDF files into DB
@@ -82,7 +88,7 @@ jobs:
             pg_rdf_files/cache/epub
 
       - name: Perform SPARQL query to count ebooks
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE != 'none'
         run: |
           curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE {
             GRAPH <http://gutenberg.org/graph/catalog> {
@@ -91,12 +97,12 @@ jobs:
             http://localhost:7878/query
 
       - name: Extract authors
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE != 'none'
         run: |
           ./.github/scripts/extract_gutenberg_authors.sh
 
       - name: Cache authors CSV
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE != 'none'
         uses: actions/cache@v4
         with:
           path: gutenberg_authors.csv
