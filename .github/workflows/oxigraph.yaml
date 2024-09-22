@@ -33,28 +33,37 @@ jobs:
 
       - name: Make scripts executable
         run: |
-          chmod +x .github/scripts/check_oxigraph_db.sh
           chmod +x .github/scripts/check_rss.sh
           chmod +x .github/scripts/download_rdf_catalog.sh
           chmod +x .github/scripts/extract_gutenberg_authors.sh
           chmod +x .github/scripts/load_rdf_files.sh
+          chmod +x .github/scripts/set_load_mode.sh
           chmod +x .github/scripts/setup_oxigraph.sh
 
-      - name: Cache Oxigraph DB
-        uses: actions/cache@v4
+      - name: Check if oxigraph_db exists
+        id: restore_oxigraph_db
+        if: inputs.force_full_load != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: oxigraph_db
+          key: oxigraph-db-manual-v1
+          lookup-only: true
+
+      - name: Set LOAD_MODE based on cache existence
+        run: ./.github/scripts/set_load_mode.sh ${{ steps.restore.outputs.cache-hit }}
+
+      - name: Check RSS
+        if: env.LOAD_MODE == 'partial'
+        run: ./.github/scripts/check_rss.sh
+
+      - name: Restore Oxigraph DB cache
+        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        uses: actions/cache/restore@v4
         with:
           path: oxigraph_db
           key: oxigraph-db-manual-v1
           restore-keys: |
             oxigraph-db-
-
-      - name: Check if oxigraph_db exists
-        if: inputs.force_full_load != 'true'
-        run: ./.github/scripts/check_oxigraph_db.sh
-
-      - name: Check RSS
-        if: env.LOAD_MODE == 'partial'
-        run: ./.github/scripts/check_rss.sh
 
       - name: Download RDF catalog
         if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
@@ -73,6 +82,13 @@ jobs:
         run: |
           ./.github/scripts/load_rdf_files.sh ${{ env.LOAD_MODE }} \
             pg_rdf_files/cache/epub
+
+      - name: Save updated Oxigraph DB
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        uses: actions/cache/save@main
+        with:
+          path: oxigraph_db
+          key: oxigraph-db-manual-v1
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
