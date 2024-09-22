@@ -105,12 +105,19 @@ jobs:
             gutenberg-authors-
 
       - name: Stop Oxigraph Docker container
-        if: env.LOAD_MODE != 'none' || github.event.inputs.force_extractions == 'true'
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
         run: docker stop oxigraph_server
 
+      - name: Generate hash of oxigraph_db
+        id: generate_db_hash
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        run: |
+          hash=$(echo oxigraph-db-${{ hashFiles('oxigraph_db') }})
+          echo "oxigraph_db_hash=${hash}" >> $GITHUB_ENV
+
       - name: Save updated Oxigraph DB
-        if: steps.check_oxigraph_db.outputs.cache-matched-key && oxigraph-db-${{ hashFiles('oxigraph_db') }} != steps.check_oxigraph_db.outputs.cache-matched-key
+        if: (env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial') && (!steps.check_oxigraph_db.outputs.cache-matched-key || env.oxigraph_db_hash != steps.check_oxigraph_db.outputs.cache-matched-key)
         uses: actions/cache/save@main
         with:
           path: oxigraph_db
-          key: oxigraph-db-${{ hashFiles('oxigraph_db') }}
+          key: ${{ env.oxigraph_db_hash }}
