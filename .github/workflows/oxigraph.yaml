@@ -50,7 +50,7 @@ jobs:
           lookup-only: true
 
       - name: Set LOAD_MODE based on cache existence
-        run: ./.github/scripts/set_load_mode.sh ${{ steps.check_oxigraph_db.outputs.cache-hit }}
+        run: ./.github/scripts/set_load_mode.sh ${{ steps.check_oxigraph_db.outputs.cache-matched-key }}
 
       - name: Check RSS
         if: env.LOAD_MODE == 'partial'
