@@ -8,11 +8,8 @@ on:
     inputs:
       run_extractions:
         type: boolean
-        description: 'Run extractions'
+        description: 'Force extractions'
         default: false
-
-permissions:
-  contents: write  # For `Commit and push updated CSV` step
 
 jobs:
   load-oxigraph:
@@ -36,83 +33,43 @@ jobs:
             oxigraph-db-
 
       - name: Check if oxigraph_db exists
-        id: check-db
-        run: |
-          if [ -d "oxigraph_db" ]; then
-            echo "Database exists"
-            echo "LOAD_MODE=partial" >> $GITHUB_ENV
-          else
-            echo "Database not found, creating new"
-            mkdir -p oxigraph_db
-            echo "LOAD_MODE=full" >> $GITHUB_ENV
-          fi
+        run: ./.github/scripts/check_oxigraph_db.sh
 
       - name: Check RSS
         if: env.LOAD_MODE == 'partial'
-        run: |
-          rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
-          ids=$(curl -s $rss_url | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
-          if [ -z "$ids" ]; then
-            echo "No RSS updates found, skipping load."
-            echo "LOAD_MODE=none" >> $GITHUB_ENV
-          fi
+        run: ./.github/scripts/check_rss.sh
+
+      - name: Download RDF catalog
+        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
+        run: ./.github/scripts/download_rdf_catalog.sh pg_rdf_files
 
       - name: Set up Docker
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         uses: docker/setup-buildx-action@v3
 
-      - name: Download RDF catalog
-        if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
-        run: |
-          mkdir -p pg_rdf_files/cache/epub
-          curl -o rdf-files.tar.bz2 https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2
-          tar -xjf rdf-files.tar.bz2 -C ./pg_rdf_files
-
       - name: Run Oxigraph Docker container
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
-        run: |
-          docker run -d --name oxigraph_server \
-            -v ${{ github.workspace }}/oxigraph_db:/data \
-            -p 7878:7878 oxigraph/oxigraph:latest
-          until curl -s http://localhost:7878; do
-            echo "Waiting for Oxigraph server to start..."
-            sleep 5
-          done
+        run: ./.github/scripts/setup_oxigraph.sh
 
-      - name: Load all RDF files into DB
-        if: env.LOAD_MODE == 'full'
+      - name: Load RDF files into DB
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
         run: |
-          source .github/scripts/load_rdf.sh
-          RDF_DIR=./pg_rdf_files/cache/epub
-          i=0
-          for id in $(ls $RDF_DIR); do
-            load_rdf $id
-            i=$((i+1))
-            if [ $((i % 1000)) -eq 0 ]; then
-              echo "[$(date '+%H:%M')] Processed $i files."
-            fi
-          done
-
-      - name: Load RSS-specified RDF files into DB
-        if: env.LOAD_MODE == 'partial'
-        run: |
-          source .github/scripts/load_rdf.sh
-          rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
-          ids=$(curl -s $rss_url | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
-          RDF_DIR=./pg_rdf_files/cache/epub
-          for id in $ids; do
-            load_rdf $id
-          done
+          ./.github/scripts/load_rdf_files.sh ${{ env.LOAD_MODE }} \
+            pg_rdf_files/cache/epub
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
         run: |
-          curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE { GRAPH <http://gutenberg.org/graph/catalog> { ?s a <http://www.gutenberg.org/2009/pgterms/ebook> } }' \
+          curl -G --data-urlencode 'query=SELECT (COUNT(*) AS ?total) WHERE {
+            GRAPH <http://gutenberg.org/graph/catalog> {
+              ?s a <http://www.gutenberg.org/2009/pgterms/ebook>
+            } }' \
             http://localhost:7878/query
 
       - name: Extract authors
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
-        run: source ./.github/scripts/extract_gutenberg_authors.sh
+        run: |
+          ./.github/scripts/extract_gutenberg_authors.sh
 
       - name: Cache authors CSV
         if: env.LOAD_MODE != 'none' || github.event.inputs.run_extractions == 'true'
