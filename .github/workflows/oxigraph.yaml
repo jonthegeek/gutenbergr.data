@@ -24,6 +24,17 @@ jobs:
           ref: main
           token: ${{ env.GITHUB_PAT }}
 
+      - name: Make scripts executable
+        run: |
+          chmod +x .github/scripts/check_oxigraph_db.sh
+          chmod +x .github/scripts/check_rss.sh
+          chmod +x .github/scripts/download_rdf_catalog.sh
+          chmod +x .github/scripts/extract_gutenberg_authors.sh
+          chmod +x .github/scripts/extract_table.sh
+          chmod +x .github/scripts/load_rdf.sh
+          chmod +x .github/scripts/load_rdf_files.sh
+          chmod +x .github/scripts/setup_oxigraph.sh
+
       - name: Cache Oxigraph DB
         uses: actions/cache@v4
         with:
