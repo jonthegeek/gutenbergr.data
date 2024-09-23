@@ -103,7 +103,7 @@ jobs:
         run: ./.github/scripts/load_rdf_files.sh pg_rdf_files/cache/epub
 
       - name: Save new RSS pubDate
-        if: env.LOAD_MODE == 'partial' && !steps.check_rss_cache.outputs.cache-hit'
+        if: env.LOAD_MODE == 'partial' && !steps.check_rss_cache.outputs.cache-hit
         run: echo "${{ env.RSS_PUBDATE }}" > rss_pubDate.txt
 
       - name: Perform SPARQL query to count ebooks
