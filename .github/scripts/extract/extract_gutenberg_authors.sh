@@ -6,7 +6,7 @@
 # Usage:
 #   ./.github/scripts/extract_gutenberg_authors.sh
 
-source ./.github/scripts/extract_table.sh
+source ./.github/scripts/extract/extract_table.sh
 
 table_name="gutenberg_authors"
 query="PREFIX pgterms: <http://www.gutenberg.org/2009/pgterms/>
