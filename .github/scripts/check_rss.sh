@@ -23,7 +23,10 @@ if [ -z "$rss_pubdate" ]; then
   echo "❗Failed to extract pubDate."
   exit 1
 fi
-echo "RSS_PUBDATE=$rss_pubdate" >> "$GITHUB_ENV"
+# Process the pubDate to remove spaces, commas, and colons
+simplified_pubdate=$(echo "$rss_pubdate" | sed 's/[ ,:]//g')
+echo "Processed RSS pubDate: $simplified_pubdate"
+echo "RSS_PUBDATE=$simplified_pubdate" >> "$GITHUB_ENV"
 
 ids=$(echo "$rss_content" | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
 
