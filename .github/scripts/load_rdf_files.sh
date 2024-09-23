@@ -3,16 +3,19 @@
 #   Load a batch of RDF files into an Oxigraph instance.
 #
 # Usage:
-#   ./.github/scripts/load_rdf_files.sh <mode> <rdf_dir>
+#   ./.github/scripts/load_rdf_files.sh <rdf_dir>
 #
 # Arguments:
-#   mode      Whether to perform a 'full' load or a 'partial' load.
 #   rdf_dir   The path to the directory containing RDF files.
+#
+# Environment Variables:
+#   LOAD_MODE     Whether to perform a 'full' load or a 'partial' load.
+#   RSS_IDS_FILE  Path to a file with RSS ids to potentially update.
 
 source ./.github/scripts/load_rdf.sh
 
-mode=$1
-rdf_dir=$2
+mode=$LOAD_MODE
+rdf_dir=$1
 
 if [ "$mode" == "full" ]; then
   i=0
@@ -24,8 +27,13 @@ if [ "$mode" == "full" ]; then
     fi
   done
 elif [ "$mode" == "partial" ]; then
-  rss_url="https://www.gutenberg.org/cache/epub/feeds/today.rss"
-  ids=$(curl -s "$rss_url" | grep -oP '(?<=<link>https://www.gutenberg.org/ebooks/)\d+')
+  if [ -f "$RSS_IDS_FILE" ]; then
+    ids=$(cat "$RSS_IDS_FILE")
+    echo "Loaded RSS ids: $ids"
+  else
+    echo "❗No RSS ids file found."
+    exit 1
+  fi
   for id in $ids; do
     load_rdf "$rdf_dir" "$id"
   done

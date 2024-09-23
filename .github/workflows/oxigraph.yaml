@@ -59,6 +59,19 @@ jobs:
         if: env.LOAD_MODE == 'partial'
         run: ./.github/scripts/check_rss.sh
 
+      - name: Check for existing RSS pubDate cache
+        if: env.LOAD_MODE == 'partial'
+        id: check_rss_cache
+        uses: actions/cache@v4
+        with:
+          path: rss_pubDate.txt
+          key: rss_pubdate-${{ env.RSS_PUBDATE }}
+          lookup-only: true
+
+      - name: Set LOAD_MODE based on RSS cache hit
+        if: steps.check_rss_cache.outputs.cache-hit == 'true'
+        run: echo "LOAD_MODE=none" >> "$GITHUB_ENV"
+
       - name: Check force extractions
         if: env.LOAD_MODE == 'none' && github.event.inputs.force_extractions == 'true'
         run: echo "LOAD_MODE=extract" >> $GITHUB_ENV
@@ -84,9 +97,18 @@ jobs:
 
       - name: Load RDF files into DB
         if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
-        run: |
-          ./.github/scripts/load_rdf_files.sh ${{ env.LOAD_MODE }} \
-            pg_rdf_files/cache/epub
+        env:
+          LOAD_MODE: ${{ env.LOAD_MODE }}
+          RSS_IDS_FILE: ${{ env.RSS_IDS_FILE }}
+        run: ./.github/scripts/load_rdf_files.sh pg_rdf_files/cache/epub
+
+      - name: Save new RSS pubDate to cache
+        if: env.LOAD_MODE == 'partial'
+        run: echo "${{ env.RSS_PUBDATE }}" > rss_pubDate.txt
+        uses: actions/cache@v4
+        with:
+          path: rss_pubDate.txt
+          key: rss_pubdate-${{ env.RSS_PUBDATE }}
 
       - name: Perform SPARQL query to count ebooks
         if: env.LOAD_MODE != 'none'
