@@ -114,8 +114,12 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add ./data/
-          git diff --quiet || git commit -m "🤖 Update exported datasets"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🤖 Update exported datasets"
+            git push
+          fi
 
       - name: Stop Oxigraph Docker container
         if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
