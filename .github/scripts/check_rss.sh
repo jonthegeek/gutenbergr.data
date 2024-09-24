@@ -24,7 +24,7 @@ if [ -z "$rss_pubdate" ]; then
   exit 1
 fi
 # Process the pubDate to remove spaces, commas, and colons
-simplified_pubdate=$(echo "$rss_pubdate" | sed 's/[ ,:]//g')
+simplified_pubdate=$(date -d "$rss_pubdate" +"%Y%m%d")
 echo "Processed RSS pubDate: $simplified_pubdate"
 echo "RSS_PUBDATE=$simplified_pubdate" >> "$GITHUB_ENV"
 
