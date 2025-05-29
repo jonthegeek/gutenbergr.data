@@ -126,6 +126,18 @@ jobs:
         if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
         run: ./data-raw/gutenberg_authors.R
 
+      - name: Update author_aliases dataset
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        run: ./data-raw/gutenberg_author_aliases.R
+
+      - name: Update ebook_authors dataset
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        run: ./data-raw/gutenberg_ebook_authors.R
+
+      - name: Update metadata dataset
+        if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
+        run: ./data-raw/gutenberg_metadata.R
+
       - name: Commit dataset changes
         if: env.LOAD_MODE == 'full' || env.LOAD_MODE == 'partial'
         run: |
