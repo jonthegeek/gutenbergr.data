@@ -10,14 +10,15 @@ source ./.github/scripts/extract/extract_table.sh
 
 table_name="gutenberg_authors"
 query="PREFIX pgterms: <http://www.gutenberg.org/2009/pgterms/>
-SELECT ?entity ?author ?birthdate ?deathdate
+SELECT ?gutenberg_author_id ?author ?birthdate ?deathdate
 WHERE {
   GRAPH <http://gutenberg.org/graph/catalog> {
     ?entity a pgterms:agent .
     ?entity pgterms:name ?author .
     OPTIONAL { ?entity pgterms:birthdate ?birthdate } .
     OPTIONAL { ?entity pgterms:deathdate ?deathdate } .
+    BIND(STRAFTER(STR(?entity), '/agents/') AS ?gutenberg_author_id)
   }
 }"
 
-extract_table "$table_name" "$query" "gutenberg_author_id"
+extract_table "$table_name" "$query"

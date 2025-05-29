@@ -24,8 +24,12 @@
 # the class, rather than calling tibble::as_tibble()).
 
 ## Load updated dataset if it exists. ------------------------------------------
-if (file.exists("gutenberg_authors.csv")) {
-  gutenberg_authors_new <- read.csv("gutenberg_authors.csv")
+csv_path <- "gutenberg_authors.csv"
+if (file.exists(csv_path)) {
+  gutenberg_authors_new <- read.csv(
+    csv_path,
+    na.strings = c("NA", "null")
+  )
   class(gutenberg_authors_new) <- c("tbl_df", "tbl", "data.frame")
   load("./data/gutenberg_authors.rda")
   attr(gutenberg_authors, "date_updated") <- NULL
@@ -43,4 +47,6 @@ if (file.exists("gutenberg_authors.csv")) {
 
   ## Clean up ------------------------------------------------------------------
   rm(list = intersect(ls(), c("gutenberg_authors", "gutenberg_authors_new")))
+  unlink(csv_path)
 }
+rm(csv_path)

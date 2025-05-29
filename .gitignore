@@ -12,3 +12,6 @@ oxigraph_db/
 pg_rdf_files/
 rdf-files.tar.bz2
 error_log.txt
+
+# Temporary CSVs
+/*.csv
