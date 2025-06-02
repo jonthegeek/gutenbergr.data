@@ -1,11 +1,11 @@
 name: Process Project Gutenberg Data
 
 on:
-  schedule:
-    - cron: '0 1 * * *' # Daily at 1am UTC
-    - cron: '0 0 1 * *' # Monthly at midnight on the 1st
-      env:
-        force_full_load: true
+#  schedule:
+#    - cron: '0 1 * * *' # Daily at 1am UTC
+#    - cron: '0 0 1 * *' # Monthly at midnight on the 1st
+#      env:
+#        force_full_load: true
   workflow_dispatch:
     inputs:
       force_extractions:
